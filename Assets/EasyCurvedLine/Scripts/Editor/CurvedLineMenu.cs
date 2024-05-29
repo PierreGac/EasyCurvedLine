@@ -1,5 +1,4 @@
 ﻿#if UNITY_EDITOR
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -17,12 +16,12 @@ namespace EasyCurvedLine
             Material parentLineMaterial = null;
             if (selectedObject != null && selectedObject.GetComponent<CurvedLineRenderer>() == null)
             {
-                newObj.transform.SetParent(selectedObject.transform,false);
+                newObj.transform.SetParent(selectedObject.transform, false);
                 CurvedLinePoint parentLinePoint = selectedObject.GetComponent<CurvedLinePoint>();
                 if (parentLinePoint != null)
                 {
                     CurvedLineRenderer parentCurvedLine = parentLinePoint.GetComponentInParent<CurvedLineRenderer>();
-                    if(parentCurvedLine!=null)
+                    if (parentCurvedLine != null)
                     {
                         parentLineMaterial = parentCurvedLine.GetComponent<LineRenderer>().sharedMaterial;
                     }
@@ -33,7 +32,7 @@ namespace EasyCurvedLine
             UnityEditorInternal.ComponentUtility.MoveComponentUp(curvedLine);
             AddControlPoint(curvedLine);
             AddControlPoint(curvedLine);
-            if(parentLineMaterial!=null)
+            if (parentLineMaterial != null)
             {
                 newObj.GetComponent<LineRenderer>().sharedMaterial = parentLineMaterial;
             }
@@ -62,7 +61,7 @@ namespace EasyCurvedLine
         private static void RenameControlPointsCommand(MenuCommand menuCommand)
         {
             CurvedLineRenderer curvedLine = menuCommand.context as CurvedLineRenderer;
-            RenameControlPoints(curvedLine.LinePoints);
+            RenameControlPoints(curvedLine.linePoints);
         }
 
 
@@ -78,17 +77,17 @@ namespace EasyCurvedLine
         private static void InsertControlPointCommand(MenuCommand menuCommand)
         {
             CurvedLinePoint linePoint = menuCommand.context as CurvedLinePoint;
-            CurvedLinePoint newLinePoint = InsertControlPoint(linePoint,true);
+            CurvedLinePoint newLinePoint = InsertControlPoint(linePoint, true);
             Selection.activeGameObject = newLinePoint.gameObject;
         }
 
 
-        [MenuItem("CONTEXT/CurvedLinePoint/Insert Control Point Before",true)]
+        [MenuItem("CONTEXT/CurvedLinePoint/Insert Control Point Before", true)]
         private static bool ValidateInsertControlPointCommand(MenuCommand menuCommand)
         {
             CurvedLinePoint linePoint = menuCommand.context as CurvedLinePoint;
             CurvedLineRenderer curvedLine = linePoint.GetComponentInParent<CurvedLineRenderer>();
-            return curvedLine.LinePoints.Length>1;
+            return curvedLine.linePoints.Count > 1;
         }
 
 
@@ -96,7 +95,7 @@ namespace EasyCurvedLine
         private static void AddControlPointCommand(MenuCommand menuCommand)
         {
             CurvedLinePoint linePoint = menuCommand.context as CurvedLinePoint;
-            CurvedLinePoint newLinePoint = InsertControlPoint(linePoint,false);
+            CurvedLinePoint newLinePoint = InsertControlPoint(linePoint, false);
             Selection.activeGameObject = newLinePoint.gameObject;
         }
 
@@ -112,12 +111,12 @@ namespace EasyCurvedLine
         {
             CurvedLineRenderer curvedLine = linePoint.GetComponentInParent<CurvedLineRenderer>();
             CurvedLinePoint newLinePoint = AddControlPoint(curvedLine);
-            List<CurvedLinePoint> linePointList = new List<CurvedLinePoint>(curvedLine.LinePoints);
+            List<CurvedLinePoint> linePointList = new List<CurvedLinePoint>(curvedLine.linePoints);
             int idx = linePointList.IndexOf(linePoint);
             int siblingIndex = linePoint.transform.GetSiblingIndex();
             if (before)
             {
-                CurvedLinePoint prevLinePoint = curvedLine.LinePoints[idx-1];
+                CurvedLinePoint prevLinePoint = curvedLine.linePoints[idx - 1];
                 newLinePoint.transform.SetSiblingIndex(siblingIndex);
                 linePoint.transform.SetSiblingIndex(siblingIndex + 1);
                 // set the new point in the middle between the current and the prervious point
@@ -125,16 +124,16 @@ namespace EasyCurvedLine
             }
             else
             {
-                if(curvedLine.LinePoints.Length>idx+1)
+                if (curvedLine.linePoints.Count > idx + 1)
                 {
-                    CurvedLinePoint nextLinePoint = curvedLine.LinePoints[idx+1];
+                    CurvedLinePoint nextLinePoint = curvedLine.linePoints[idx + 1];
                     newLinePoint.transform.SetSiblingIndex(siblingIndex + 1);
                     // set the new point in the middle between the current and the next point
                     newLinePoint.transform.position = (nextLinePoint.transform.position + linePoint.transform.position) * 0.5f;
                 }
             }
             curvedLine.Update();
-            RenameControlPoints(curvedLine.LinePoints);
+            RenameControlPoints(curvedLine.linePoints);
 
             return newLinePoint;
         }
@@ -142,8 +141,8 @@ namespace EasyCurvedLine
 
         private static CurvedLinePoint AddControlPoint(CurvedLineRenderer curvedLine, bool insertBefore = false)
         {
-            CurvedLinePoint[] linePoints = curvedLine.LinePoints;
-            int pointsCount = linePoints == null ? 0 : linePoints.Length;
+            List<CurvedLinePoint> linePoints = curvedLine.linePoints;
+            int pointsCount = linePoints == null ? 0 : linePoints.Count;
             GameObject newObj;
             CurvedLinePoint newLinePoint;
             if (pointsCount == 0)
@@ -153,7 +152,7 @@ namespace EasyCurvedLine
             }
             else
             {
-                newObj = GameObject.Instantiate(linePoints[0].gameObject);
+                newObj = Instantiate(linePoints[0].gameObject);
                 newLinePoint = newObj.GetComponent<CurvedLinePoint>();
             }
             newObj.name = "LinePoint" + (pointsCount + 1);
@@ -172,14 +171,14 @@ namespace EasyCurvedLine
                 }
             }
             curvedLine.Update();
-            RenameControlPoints(curvedLine.LinePoints);
+            RenameControlPoints(curvedLine.linePoints);
             return newLinePoint;
         }
 
 
-        private static void RenameControlPoints(CurvedLinePoint[] linePoints)
+        private static void RenameControlPoints(List<CurvedLinePoint> linePoints)
         {
-            for(int i=0;i<linePoints.Length;i++)
+            for (int i = 0; i < linePoints.Count; i++)
             {
                 linePoints[i].gameObject.name = "LinePoint" + (i + 1);
             }

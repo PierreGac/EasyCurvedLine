@@ -35,6 +35,19 @@ namespace EasyCurvedLine
         /// </summary>
         [Tooltip("Custom width for the line end")]
         public float endWidth = 0.1f;
+
+        /// <summary>
+        /// Automatically update the line.
+        /// </summary>
+        [Tooltip("Automatically update the line.")]
+        public bool autoUpdate = true;
+
+        /// <summary>
+        /// Allow editing width directly on curve graph.
+        /// </summary>
+        [Tooltip("Allow editing width directly on curve graph.")]
+        public bool allowWidthEditOnCurveGraph = true;
+
         [Header("Gizmos")]
 
         /// <summary>
@@ -55,18 +68,19 @@ namespace EasyCurvedLine
         [Tooltip("Color for rendering the gizmos of control points.")]
         public Color gizmoColor = new Color(1, 0, 0, 0.5f);
 
-        /// <summary>
-        /// Automatically update the line.
-        /// </summary>
-        [Tooltip("Automatically update the line.")]
-        public bool autoUpdate = true;
-
         private Vector3[] linePositions = new Vector3[0];
         private Vector3[] linePositionsOld = new Vector3[0];
         private LineRenderer lineRenderer = null;
         private Material lineRendererMaterial = null;
 
+        private float oldLineWidth = 0.0f;
+        private float oldEndWidth = 0.0f;
+        private float oldLineRendererStartWidth = 0.0f;
+        private float oldLineRendererEndWidth = 0.0f;
+
+
         public List<CurvedLinePoint> linePoints { get; private set; } = new List<CurvedLinePoint>();
+
 
         /// <summary>
         /// Collect control points positions and update the line renderer.
@@ -81,6 +95,7 @@ namespace EasyCurvedLine
 
         private void Awake() => lineRenderer = GetComponent<LineRenderer>();
 
+
         /// <summary>
         /// Collect control points positions and update the line renderer.
         /// </summary>
@@ -91,6 +106,7 @@ namespace EasyCurvedLine
                 UpdateLineRenderer();
             }
         }
+
 
         private void GetPoints()
         {
@@ -119,24 +135,53 @@ namespace EasyCurvedLine
 
         private void SetPointsToLine()
         {
-            bool rebuild = false;
-
-            // create old positions if they don't match
-            if (linePositionsOld.Length != linePositions.Length)
+            if(lineRenderer == null)
             {
-                linePositionsOld = new Vector3[linePositions.Length];
-                rebuild = true;
+                lineRenderer = GetComponent<LineRenderer>();
             }
-            else
+            if (allowWidthEditOnCurveGraph)
             {
-                // check if line points have moved
-                for (int i = 0; i < linePositions.Length; i++)
+                // if the start width was edited directly on the curve
+                if (oldLineWidth == lineWidth && oldLineRendererStartWidth != lineRenderer.startWidth)
                 {
-                    //compare
-                    if (linePositions[i] != linePositionsOld[i])
+                    lineWidth = lineRenderer.startWidth;
+                }
+
+                // if the end width was edited directly on the curve
+                if (oldEndWidth == endWidth && oldLineRendererEndWidth != lineRenderer.endWidth)
+                {
+                    endWidth = lineRenderer.endWidth;
+                    if (endWidth != lineWidth)
                     {
-                        rebuild = true;
-                        break;
+                        useCustomEndWidth = true;
+                    }
+                }
+            }
+
+            float actualEndWidth = useCustomEndWidth ? endWidth : lineWidth;
+
+            // rebuild the line if any parameter was changed
+            bool rebuild = lineRenderer.startWidth != lineWidth || lineRenderer.endWidth != actualEndWidth;
+
+            if (!rebuild)
+            {
+                // create old positions if they don't match
+                if (linePositionsOld.Length != linePositions.Length)
+                {
+                    linePositionsOld = new Vector3[linePositions.Length];
+                    rebuild = true;
+                }
+                else
+                {
+                    // check if line points have moved
+                    for (int i = 0; i < linePositions.Length; i++)
+                    {
+                        //compare
+                        if (linePositions[i] != linePositionsOld[i])
+                        {
+                            rebuild = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -149,6 +194,7 @@ namespace EasyCurvedLine
                 {
                     lineRenderer = GetComponent<LineRenderer>();
                 }
+
                 // get smoothed values
                 Vector3[] smoothedPoints = LineSmoother.SmoothLine(linePositions, lineSegmentSize);
 
@@ -157,6 +203,11 @@ namespace EasyCurvedLine
                 lineRenderer.SetPositions(smoothedPoints);
                 lineRenderer.startWidth = lineWidth;
                 lineRenderer.endWidth = useCustomEndWidth ? endWidth : lineWidth;
+
+                oldLineWidth = lineWidth;
+                oldEndWidth = endWidth;
+                oldLineRendererStartWidth = lineRenderer.startWidth;
+                oldLineRendererEndWidth = lineRenderer.endWidth;
             }
         }
 
@@ -172,19 +223,20 @@ namespace EasyCurvedLine
             }
 
             // settings for gizmos
-            for (int i = 0; i < linePoints.Count; i++)
+            foreach (CurvedLinePoint linePoint in linePoints)
             {
-                linePoints[i].showGizmo = showGizmos;
-                linePoints[i].gizmoSize = gizmoSize;
-                linePoints[i].gizmoColor = gizmoColor;
+                linePoint.showGizmo = showGizmos;
+                linePoint.gizmoSize = gizmoSize;
+                linePoint.gizmoColor = gizmoColor;
             }
         }
+
 
         private void UpdateMaterial()
         {
             if (lineRenderer == null)
             {
-                TryGetComponent(out lineRenderer);
+                lineRenderer = GetComponent<LineRenderer>();
             }
             Material lineMaterial = lineRenderer.sharedMaterial;
             if (lineRendererMaterial != lineMaterial)
